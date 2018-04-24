@@ -7,5 +7,8 @@ pset6/sentiments:
 pset7/finance:
   - A website where users can quote, "buy" and "sell" stocks. 
 
+Python Tutorial:
+  - A set of simple exercises made during a Python course on openclassrooms.com
+
 Labyrinth Game:
   - A command line game where you control a robot through a maze

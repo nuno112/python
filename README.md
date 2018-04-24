@@ -1,4 +1,4 @@
-# Python programs/websites I made in CS50x
+# Python programs/websites I made in CS50x and other python courses
 
 
 pset6/sentiments:

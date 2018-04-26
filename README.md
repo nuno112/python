@@ -12,3 +12,6 @@ Python Tutorial:
 
 Labyrinth Game:
   - A command line game where you control a robot through a maze
+
+Labyrinth Game 2.0:
+  - Multiplayer online version of Labyrinth Game, with added features.

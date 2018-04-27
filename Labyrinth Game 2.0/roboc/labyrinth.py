@@ -6,26 +6,47 @@
 class Labyrinth:
     """Class that represents a labyrinth"""
 
+    maxY = 20
+    maxX = 20
+
     def __init__(self, grid):
         self.grid = grid
-        self.robotPosition = [(ix, iy) for ix, row in enumerate(self.grid)
-                              for iy, i in enumerate(row) if i == "X"][0]
-        self.robotInDoor = False
+        self.robots = []
 
     def __repr__(self):
         text = ""
-        for i, line in enumerate(self.grid):
-            for j, char in enumerate(line):
-                text += char
+        for x in range(0, self.maxX):
+            for y in range(0, self.maxY):
+                if (x, y) in self.grid:
+                    text += self.grid[(x, y)]
             text += "\n"
-        return text
+        return text.strip()
 
-    def updateRobotPosition(self, newPosiion):
-        """This method tries to update the robot possition, and depending
-        on the placed position, it is allowed or not. It also checks if the
-        robot as reached the end of the labyrinth and thus, won"""
+    def getEmptySpaces(self):
+        """This method returns the currently empty spaces in a labyritnh
+        as a list containing tuples in the form (x, y)"""
 
-        oldPosition = self.robotPosition
+        emptySpaces = []
+        for x in range(0, self.maxX):
+            for y in range(0, self.maxY):
+                if (x, y) in self.grid and self.grid[(x, y)] == " ":
+                    emptySpaces.append((x, y))
+        return emptySpaces
+
+    def addRobot(self, robot):
+        """This methods adds a robot to the labyrinth as a player connects"""
+
+        self.robots.append(robot)
+        self.grid[robot.position] = "x"
+
+    def checkRobotMovement(self, newPosiion):
+        """This method checks if the robot can move to the inputed possition
+        It also checks if the robot as reached the end of the labyrinth
+        and thus, won"""
+
+        # TODO alter this shit to just check if it can move, and then call
+        # robot.updateRobotPosition
+        oldPosition = self.position
         a, b = newPosiion
         occupiedSpaces = (".", "O", "U", "X")
         if self.grid[a][b] not in occupiedSpaces and not self.robotInDoor:

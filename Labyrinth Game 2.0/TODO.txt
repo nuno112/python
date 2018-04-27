@@ -2,6 +2,7 @@
   - Create a getFreeSpace() method (check if there is another robot), and use
   random.choose on the returned list.
   - Assign the value to robotPosition
+DONE
 
 
 2. Wall doors functionality:
@@ -44,6 +45,7 @@
     5.2.1. When one user inputs 'c', start the game and don't accept more
     connections.
       -
+
     5.2.2. Use threads to make the client listen for server responses and wait
     for user commands simultaneously
       -

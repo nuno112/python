@@ -1,6 +1,6 @@
 # -*-coding:Utf-8 -*
 
-"""This file contains the main source code of the game Roboc.
+"""This file contains the server source code of the game Roboc.
 
 The game is a maze of obstacles: walls that are simply there to slow you down,
 doors that can be crossed and at least one point through which you can leave
@@ -8,10 +8,17 @@ the labyrinth. If the robot arrives on this point, the game is considered won.
 """
 
 import os
+import socket
+import select
 
 from map import Map
 from helpers import *
 from labyrinth import *
+
+
+host = ""
+port = 13000
+serverLaunched = False
 
 maps = []
 
@@ -41,7 +48,6 @@ def chooseMap():
     print("\nExisting labyrinths:\n")
     for i, map_ in enumerate(maps):
         print("{} - {}".format(i, map_.name))
-        print(map_.labyrinth)
         mapNumbers.append(i)
 
     # Prompt the user to choose the map to play from the list of available maps
@@ -57,85 +63,67 @@ def chooseMap():
     return choiceInt
 
 
-def continueGame():
-    """If there is a saved game, it will be displayed, and the user will be
-    prompted to say if it wants to continue playing that game"""
-
-    answer = ""
-
-    # Check if the save file exists
-    if "save.dat" in os.listdir("savedata"):
-        labyrinth_ = readSaveData()
-
-        # Check if there is a saved game, or if the save file is empty
-        if isinstance(labyrinth_, Labyrinth):
-            labyrinth_.updateRobotPosition(labyrinth_.robotPosition)
-            print("There is a saved game: ")
-            print(labyrinth_)
-
-            # Ask user if he wants to continue the saved game
-            while answer not in ("yes", "no", "y", "n"):
-                answer = input("Do you wish to continue playing?" +
-                               " (yes/no): ")
-                answer.lower()
-            if answer in ("yes", "y"):
-                return (True, labyrinth_)
-            else:
-                return (False,)
-        else:
-            return (False,)
-    else:
-        return (False,)
+def createConnection():
+    connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    connection.bind((host, port))
+    connection.listen(5)
+    print("The server is listening at port {}".format(port))
+    serverLaunched = True
+    return connection
 
 
-def getUserMove():
-    """ This function prompts the user for a letter and return it, to determine
-    the action to take. If the user inputs a number after the letter, the robot
-    will move that amount until it hits an obstacle, or not. """
-
-    move = ""
-    moveDirection = ""
-    moveAmount = 1
-
-    # Ask the user for a command to move the robot or quit
-    while moveDirection not in ("q", "s", "n", "e", "w"):
-        move = input("Where do you want to move? (S)outh, (N)orth, " +
-                     "(E)ast, (W)est, or (Q)uit:  ")
-        print("\n")
-        move.lower()
-
-        # Check if user wants to advance several blocks (direction followed by
-        # a number)
-        if len(move) > 1:
-            moveDirection = move[0]
-            try:
-                moveAmount = int(move[1:])
-            except ValueError:
-                print("Not a valid move amount.")
-        else:
-            moveDirection = move
-    return (moveDirection, moveAmount)
+def closeConnections(clientsConnected):
+    for client in clientsConnected:
+        client.close()
 
 
 # main game flow
 def main():
 
-    # Setup the game and check if user wants to continue the saved game
+    clientsConnected = []
+    # Setup the game
+    mainConnection = createConnection()
     loadMaps()
-    continueGameAnswer = continueGame()
-    if continueGameAnswer[0]:
-        currentGameLabyrinth = continueGameAnswer[1]
-    else:
+    while serverLaunched:
 
-        # ask the user to choose te map, and use the choice to define the
-        # current game map
-        currentGameLabyrinth = maps[chooseMap()].labyrinth
+        # Listen on the main connection for clients, and add them to the
+        # pending connection list to be accepted
+        requestedConections, wlist, xlist = select.select([mainConnection], [],
+                                                          [], 0.05)
+        for connection in requestedConections:
+            connectionWithClient, connectionInfo = connection.accept()
+
+            # Add the pending connections to the accepted connection list
+            clientsConnected.append(connectionWithClient)
+
+        # Listen to the connected clients. The clients returned by select are
+        # the ones to be read (recv). Wait for 50 ms. Lock te call to
+        # select.select in a try block. If the list of connected clients is
+        # empty, an exception is raised
+        clientsToRead = []
+        try:
+            clientsToRead, wlist, xlist = select.select(clientsConnected, [],
+                                                        [], 0.05)
+        except select.error:
+            pass
+        else:
+            # Go through the list of clients to read
+            for client in clientsToRead:
+                msgReceived = client.recv(1024)
+                msgReceived = msgReceived.decode()
+
+
+    # ask the user to choose te map, and use the choice to define the
+    # current game map
+    currentGameLabyrinth = maps[chooseMap()].labyrinth
 
     # This loop defines the main game flow, by getting the user input,
     # and moving the robot accordingly
     moveDirection = ""
     while moveDirection is not "q":
         print(currentGameLabyrinth)
+
+        # TODO change this to accept data from the client through TCP
         move = getUserMove()
         moveAmount = move[1]
         moveDirection = move[0]
@@ -152,9 +140,6 @@ def main():
             elif moveDirection == "w":
                 y -= 1
 
-            # Save the dat to a file
-            writeSaveData(currentGameLabyrinth)
-
             # Check if the user has reached the goal and
             # updateRobotPosition
             win = currentGameLabyrinth.updateRobotPosition((x, y))
@@ -162,9 +147,13 @@ def main():
                 print(currentGameLabyrinth)
                 print("You won! Congratulations!")
                 moveDirection = "q"
-                writeSaveData({})
                 break
             moveAmount -= 1
+
+    # Close all connections
+    print("Closing all connections...")
+    closeConnections(clientsConnected)
+    mainConnection.close()
 
 
 if __name__ == "__main__":

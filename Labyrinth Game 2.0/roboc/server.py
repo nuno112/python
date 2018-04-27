@@ -2,10 +2,10 @@
 
 """This file contains the server source code of the game Roboc.
 
-The game is a maze of obstacles: walls that are simply there to slow you down,
-doors that can be crossed and at least one point through which you can leave
-the labyrinth. If the robot arrives on this point, the game is considered won.
-"""
+The game is a multiplayer PVP maze of obstacles: walls that are simply there to
+slow you down, doors that can be crossed and at least one point through which
+you can leave the labyrinth. If one of the robots arrives at this point, the
+game is considered won. The robots can also create doors, or block them"""
 
 import os
 import socket
@@ -21,6 +21,12 @@ port = 13000
 serverLaunched = False
 
 maps = []
+
+# Add players (Player class) which has the connection info for a certain player
+# Associate the players to each robot, then cycle through robot list to check
+# which robot belongs to the current player sending info, and change the robot
+# accordingly
+players = []
 
 
 def loadMaps():
@@ -111,7 +117,6 @@ def main():
             for client in clientsToRead:
                 msgReceived = client.recv(1024)
                 msgReceived = msgReceived.decode()
-
 
     # ask the user to choose te map, and use the choice to define the
     # current game map

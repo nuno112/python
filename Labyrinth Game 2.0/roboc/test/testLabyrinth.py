@@ -8,7 +8,8 @@ from labyrinth import *
 from robot import *
 from obstacle import *
 from helpers import *
-from roboc import *
+from client import *
+from server import *
 
 
 class LabyrinthTest(unittest.TestCase):
@@ -40,4 +41,4 @@ class LabyrinthTest(unittest.TestCase):
         self.assertIn(self.robot1, self.labyrinth.robots)
 
 
-unittest.main()
+unittest.main(exit=False)

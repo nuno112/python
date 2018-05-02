@@ -3,7 +3,6 @@
 through a TCP socket. Sends the command inputed by the player, and receives
 the labyrinth string to display"""
 
-from player import *
 import socket
 import select
 
@@ -16,7 +15,7 @@ def connect():
 
     connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     connection.connect((host, port))
-    print("Conection established with the server ate port {}".format(port))
+    print("Conection established with the server at port {}".format(port))
     return connection
 
 
@@ -29,15 +28,30 @@ def main():
         msgReceived = connectionToServer.recv(1024)
         msgReceived = msgReceived.decode()
 
+        # If the server sends 'connected', it is waiting for players to join
+        # or to start the game
+        if msgReceived == "connected":
+            start = ""
+            print("Press c to start the game")
+            while start != "c":
+                start = input(">")
+                connectionToServer.send(start.encode())
+
         # If the server send the msg 'go', it means it's this client's turn
         # and it is expecting an answer (the command inputed by the player)
-        # If the message is 'end' the game is over
-        if msgReceived[0:2] == "go":
+        elif msgReceived[0:2] == "go":
             print(msgReceived[2:])
             move = getUserMove()
             connectionToServer.send(move.encode())
+            print("You sent the {} command to the server!".format(move))
+
+        # If the message is 'end' the game is over
         elif msgReceived == "end":
+            print("The game is over.")
             connectionToServer.close()
+
+        # if the server does not send any of the above msg, it sends the
+        # current game labyrinth's for the player to see
         else:
             print(msgReceived)
 
@@ -71,3 +85,6 @@ def getUserMove():
             print("Not a valid move amount.")
     else:
         moveDirection = move """
+
+
+main()

@@ -39,41 +39,44 @@ class Labyrinth:
         self.robots.append(robot)
         self.grid[robot.position] = "x"
 
-    def checkRobotMovement(self, newPosiion):
+    def checkRobotMovement(self, robot, newPosition):
         """This method checks if the robot can move to the inputed possition
         It also checks if the robot as reached the end of the labyrinth
         and thus, won"""
 
         # TODO alter this shit to just check if it can move, and then call
         # robot.updateRobotPosition
-        oldPosition = self.position
-        a, b = newPosiion
+        oldPosition = robot.position
+
         occupiedSpaces = (".", "O", "U", "X")
-        if self.grid[a][b] not in occupiedSpaces and not self.robotInDoor:
-            self.robotPosition = newPosiion
-            self.grid[a][b] = "X"
-            a, b = oldPosition
-            self.grid[a][b] = " "
-
-        elif self.grid[a][b] == ".":
-            self.robotPosition = newPosiion
-            a, b = oldPosition
-            self.grid[a][b] = " "
-            self.robotInDoor = True
-
-        elif self.grid[a][b] == "O":
-            print("\nYou can't move there!\n")
-
-        elif self.grid[a][b] == "U":
-            self.robotPosition = newPosiion
-            self.grid[a][b] = "X"
-            a, b = oldPosition
-            self.grid[a][b] = " "
+        if (self.grid[newPosition] not in occupiedSpaces
+           and not robot.robotInDoor):
+            robot.updateRobotPosition(newPosition, False)
+            self.grid[newPosition] = "X"
+            self.grid[oldPosition] = " "
             return True
 
-        elif self.robotInDoor:
-            self.robotPosition = newPosiion
-            self.grid[a][b] = "X"
-            a, b = oldPosition
-            self.grid[a][b] = "."
-            self.robotInDoor = False
+        elif self.grid[newPosition] == ".":
+            robot.updateRobotPosition(newPosition, True)
+            robot.position = newPosition
+            self.grid[oldPosition] = " "
+            return True
+
+        elif self.grid[newPosition] == "O":
+            return False
+
+        # TODO Put this elsewhere
+        elif self.grid[newPosition] == "U":
+            robot.updateRobotPosition(newPosition, False)
+            self.grid[newPosition] = "X"
+            self.grid[oldPosition] = " "
+            return True
+
+        elif self.grid[newPosition] == "X":
+            return False
+
+        elif robot.robotInDoor:
+            robot.updateRobotPosition(newPosition, False)
+            self.grid[newPosition] = "X"
+            self.grid[oldPosition] = "."
+            return True

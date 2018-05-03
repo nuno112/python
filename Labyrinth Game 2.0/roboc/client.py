@@ -5,6 +5,7 @@ the labyrinth string to display"""
 
 import socket
 import select
+import time
 
 host = "localhost"
 port = 13000
@@ -15,32 +16,33 @@ def connect():
 
     connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     connection.connect((host, port))
-    print("Conection established with the server at port {}".format(port))
+    print("Connection established with the server at port {}".format(port))
     return connection
 
 
 def main():
     playing = True
     print(("Hello! Welcome to Labyrinth Game 2.0. Please wait while we connect"
-           "you to our server!"))
+           " you to our server!"))
     connectionToServer = connect()
     while playing:
         msgReceived = connectionToServer.recv(1024)
         msgReceived = msgReceived.decode()
-
         # If the server sends 'connected', it is waiting for players to join
         # or to start the game
         if msgReceived == "connected":
             start = ""
-            print("Press c to start the game")
+            print("Enter c to start the game")
             while start != "c":
-                start = input(">")
-                connectionToServer.send(start.encode())
+                start = input("")
+                start = start.lower()
+            connectionToServer.send(start.encode())
 
         # If the server send the msg 'go', it means it's this client's turn
         # and it is expecting an answer (the command inputed by the player)
+
         elif msgReceived[0:2] == "go":
-            print(msgReceived[2:])
+            print("\n" + msgReceived[2:])
             move = getUserMove()
             connectionToServer.send(move.encode())
             print("You sent the {} command to the server!".format(move))
@@ -52,8 +54,11 @@ def main():
 
         # if the server does not send any of the above msg, it sends the
         # current game labyrinth's for the player to see
-        else:
-            print(msgReceived)
+
+        elif msgReceived:
+            print("\n" + msgReceived)
+
+        time.sleep(1)
 
 
 def getUserMove():
@@ -66,7 +71,7 @@ def getUserMove():
     # TODO add the wall door and build door functionality
 
     # Ask the user for a command to move the robot
-    while move[0] not in ("s", "n", "e", "w"):
+    while move not in ("s", "n", "e", "w"):
         move = input("Where do you want to move? (S)outh, (N)orth, " +
                      "(E)ast, (W)est, or (Q)uit:  ")
         print("\n")
@@ -87,4 +92,5 @@ def getUserMove():
         moveDirection = move """
 
 
-main()
+if __name__ == "__main__":
+        main()

@@ -125,34 +125,41 @@ def acceptConnections(clientsConnected, connection):
         msgReceived = msgReceived.decode()
         print("Client {} sent\n{}".format(client, msgReceived))
         if msgReceived == "c":
+            client.send("start".encode())
             return False
     return True
 
 
-def handleClientCommand(client, command):
+def handleClientCommand(robot, command):
     """This function handles the command sent by client. It checks what it is
     and updates the labyrinth accordingly. The command validation is made in
     the client side"""
 
     global currentGameLabyrinth
-    moveDirection = ""
+    x, y = robot.position
 
-    moveAmount = command[1]
-    moveDirection = command[0]
+    if command == "s":
+        x += 1
+    elif command == "n":
+        x -= 1
+    elif command == "e":
+        y += 1
+    elif command == "w":
+        y -= 1
 
-    # Try to move moveAmount times
-    while moveAmount > 0:
-        x, y = currentGameLabyrinth.robotPosition
-        if moveDirection == "s":
-            x += 1
-        elif moveDirection == "n":
-            x -= 1
-        elif moveDirection == "e":
-            y += 1
-        elif moveDirection == "w":
-            y -= 1
+    # if the command is not valid, valid is false, and if the player has won
+    # it returns True
+    valid = currentGameLabyrinth.checkRobotMovement(robot, (x, y))
+    return valid
 
-    return True
+
+def sendLabyrinthToAll():
+    global currentGameLabyrinth
+    for robot in currentGameLabyrinth.robots:
+        currentGameLabyrinth.grid[robot.position] = "X"
+        msgSent = "" + str(currentGameLabyrinth)
+        robot.player.connection.send(msgSent.encode())
+        currentGameLabyrinth.grid[robot.position] = "x"
 
 
 def main():
@@ -185,22 +192,27 @@ def main():
 
         # Loop through the connected players and, for each one, get the sent
         # command and handle it to check what to do
-        for client in clientsConnected:
+        while True:
+            for robot in currentGameLabyrinth.robots:
 
-            # Try to get a valid command from the client while it's his turn.
-            # If the command is accepted, process it, update the labyrinth and
-            # go to the next player
-            nextPlayer = False
-            while not nextPlayer:
+                # Try to get a valid command from the client while it's his turn.
+                # If the command is accepted, process it, update the labyrinth and
+                # go to the next player
+                nextPlayer = False
+                while not nextPlayer:
+                    client = robot.player.connection
+                    # Tell the player it's his turn
+                    currentGameLabyrinth.grid[robot.position] = "X"
+                    msgSent = "go" + str(currentGameLabyrinth)
+                    client.send(msgSent.encode())
+                    currentGameLabyrinth.grid[robot.position] = "x"
 
-                # Tell the player it's his turn
-                msgSent = "go" + currentGameLabyrinth
-                client.send(msgSent.encode())
-
-                # Get the user response
-                msgReceived = client.recv(1024)
-                msgReceived = msgReceived.decode()
-                nextPlayer = handleClientCommand(client, msgReceived)
+                    # Get the user response
+                    msgReceived = client.recv(1024)
+                    msgReceived = msgReceived.decode()
+                    nextPlayer = handleClientCommand(robot, msgReceived)
+                    # Send the updated Laybrinth to all players
+                    sendLabyrinthToAll()
 
         # Close all connections
         print("Closing all connections...")

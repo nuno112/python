@@ -12,6 +12,7 @@ class Labyrinth:
     def __init__(self, grid):
         self.grid = grid
         self.robots = []
+        self.won = False
 
     def __repr__(self):
         text = ""
@@ -44,8 +45,6 @@ class Labyrinth:
         It also checks if the robot as reached the end of the labyrinth
         and thus, won"""
 
-        # TODO alter this shit to just check if it can move, and then call
-        # robot.updateRobotPosition
         oldPosition = robot.position
 
         occupiedSpaces = (".", "O", "U", "X")
@@ -70,6 +69,7 @@ class Labyrinth:
             robot.updateRobotPosition(newPosition, False)
             self.grid[newPosition] = "X"
             self.grid[oldPosition] = " "
+            self.won = True
             return True
 
         elif self.grid[newPosition] == "X":

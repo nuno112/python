@@ -11,6 +11,7 @@ import os
 import socket
 import select
 import time
+import pdb
 
 from map import Map
 from helpers import *
@@ -18,9 +19,10 @@ from labyrinth import *
 from player import *
 from robot import *
 
+os.system("clear")
+
 host = ""
-port = 13000
-serverLaunched = False
+port = 15002
 
 maps = []
 currentGameLabyrinth = {}
@@ -69,7 +71,8 @@ def chooseMap():
 def createConnection():
     """This funcion opens a connection through a TCP socket"""
 
-    connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    connection = socket.socket()
+    connection.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     connection.bind((host, port))
     connection.listen(5)
     print("The server is listening at port {}".format(port))
@@ -82,6 +85,7 @@ def closeConnections(clientsConnected):
     """This function closes all connections with all clients"""
 
     for client in clientsConnected:
+        client.send("close".encode())
         client.close()
 
 
@@ -94,7 +98,7 @@ def acceptConnections(clientsConnected, connection):
                                                       [], 0.05)
     for connection in requestedConections:
         connectionWithClient, connectionInfo = connection.accept()
-        connectionWithClient.send("connected".encode())
+        print("{} joined.".format(connectionInfo))
 
         # Add the pending connections to the accepted connection list
         clientsConnected.append(connectionWithClient)
@@ -110,23 +114,27 @@ def acceptConnections(clientsConnected, connection):
     # the ones to be read (recv). Wait for 50 ms. Lock te call to
     # select.select in a try block. If the list of connected clients is
     # empty, an exception is raised
-    clientsToRead = []
-    try:
-        clientsToRead, wlist, xlist = select.select(clientsConnected, [],
-                                                    [], 0.05)
-    except select.error:
-        pass
+    if len(clientsConnected) >= 2:
+        clientsToRead = []
+        try:
+            clientsToRead, wlist, xlist = select.select(clientsConnected, [],
+                                                        [], 0.05)
+        except select.error:
+            pass
 
-    # Go through the list of clients to read and check for the start game
-    # command 'c'. If a client sends the start command, the server proceeds
-    # to the labyrinth selection
-    for client in clientsToRead:
-        msgReceived = client.recv(1024)
-        msgReceived = msgReceived.decode()
-        print("Client {} sent\n{}".format(client, msgReceived))
-        if msgReceived == "c":
-            client.send("start".encode())
-            return False
+        # Go through the list of clients to read and check for the start game
+        # command 'c'. If a client sends the start command, the server proceeds
+        # to the labyrinth selection
+        else:
+            for client in clientsToRead:
+                msgReceived = client.recv(1024)
+                msgReceived = msgReceived.decode()
+                if msgReceived == "c":
+
+                    # The game starts.
+                    for client in clientsConnected:
+                        client.send("start".encode())
+                    return False
     return True
 
 
@@ -134,6 +142,8 @@ def handleClientCommand(robot, command):
     """This function handles the command sent by client. It checks what it is
     and updates the labyrinth accordingly. The command validation is made in
     the client side"""
+
+    # TODO add the wall door and build door functionality
 
     global currentGameLabyrinth
     x, y = robot.position
@@ -147,26 +157,42 @@ def handleClientCommand(robot, command):
     elif command == "w":
         y -= 1
 
-    # if the command is not valid, valid is false, and if the player has won
-    # it returns True
+    # Check if the movement is valid and return True or False
     valid = currentGameLabyrinth.checkRobotMovement(robot, (x, y))
     return valid
 
 
 def sendLabyrinthToAll():
+    """This function sends the current labyrinth to all clients"""
+
+    global currentGameLabyrinth
+
+    for robot in currentGameLabyrinth.robots:
+
+        # Update the robot display to be uppercase for the player's robot.
+        # If the robot is in a door, don't update the display because it
+        # becomes invisible
+        if not robot.robotInDoor:
+            currentGameLabyrinth.grid[robot.position] = "X"
+            msgSent = "map" + str(currentGameLabyrinth)
+            robot.player.connection.send(msgSent.encode())
+            currentGameLabyrinth.grid[robot.position] = "x"
+        else:
+            msgSent = "map" + str(currentGameLabyrinth)
+            robot.player.connection.send(msgSent.encode())
+
+
+def sendDefeatToLosers(robot_):
+    """This functions sends a msg to all users who lost, saying they lost"""
+
     global currentGameLabyrinth
     for robot in currentGameLabyrinth.robots:
-        currentGameLabyrinth.grid[robot.position] = "X"
-        msgSent = "" + str(currentGameLabyrinth)
-        robot.player.connection.send(msgSent.encode())
-        currentGameLabyrinth.grid[robot.position] = "x"
+        if robot_ != robot:
+            robot.player.connection.send("lost".encode())
 
 
 def main():
     """This funcion  defines the main game flow."""
-
-    # TODO cycle through robot list to check which robot belongs to the current
-    # player sending info, and change the robot accordingly
 
     clientsConnected = []
     global currentGameLabyrinth
@@ -175,50 +201,55 @@ def main():
     mainConnection = createConnection()
     loadMaps()
 
-    while serverLaunched:
+    # Ask the server to choose the map, and use the choice to
+    # define the current game map
+    currentGameLabyrinth = maps[chooseMap()].labyrinth
 
-        # Ask the server creator to choose the map, and use the choice to
-        # define the current game map
-        currentGameLabyrinth = maps[chooseMap()].labyrinth
+    # Accept client connections while no one starts the game
+    waitingForPlayers = True
+    print("Waiting for at least 2 players to join...")
+    while waitingForPlayers:
+        waitingForPlayers = acceptConnections(clientsConnected,
+                                              mainConnection)
 
-        # Accept client connections while no one starts the game
-        waitingForPlayers = True
-        while waitingForPlayers:
-            waitingForPlayers = acceptConnections(clientsConnected,
-                                                  mainConnection)
-            time.sleep(1)
+    # Send the updated Laybrinth to all players
+    sendLabyrinthToAll()
 
-        # The game starts. Accept client commands and manage the turns.
+    # Loop through the connected players and, for each one, get the sent
+    # command and handle it to check what to do
+    while True:
 
-        # Loop through the connected players and, for each one, get the sent
-        # command and handle it to check what to do
-        while True:
-            for robot in currentGameLabyrinth.robots:
+        for robot in currentGameLabyrinth.robots:
 
-                # Try to get a valid command from the client while it's his turn.
-                # If the command is accepted, process it, update the labyrinth and
-                # go to the next player
-                nextPlayer = False
-                while not nextPlayer:
-                    client = robot.player.connection
-                    # Tell the player it's his turn
-                    currentGameLabyrinth.grid[robot.position] = "X"
-                    msgSent = "go" + str(currentGameLabyrinth)
-                    client.send(msgSent.encode())
-                    currentGameLabyrinth.grid[robot.position] = "x"
+            # Try to get a valid command from the client while it's his turn.
+            # If the command is accepted, process it, update the labyrinth and
+            # go to the next player
+            nextPlayer = False
+            client = robot.player.connection
 
-                    # Get the user response
-                    msgReceived = client.recv(1024)
-                    msgReceived = msgReceived.decode()
-                    nextPlayer = handleClientCommand(robot, msgReceived)
-                    # Send the updated Laybrinth to all players
-                    sendLabyrinthToAll()
+            while not nextPlayer:
 
-        # Close all connections
-        print("Closing all connections...")
-        closeConnections(clientsConnected)
-        mainConnection.close()
-        break
+                # Tell the player it's his turn
+                client.send("go".encode())
+
+                # Get the user response
+                msgReceived = client.recv(1024)
+                msgReceived = msgReceived.decode()
+                nextPlayer = handleClientCommand(robot, msgReceived)
+
+            # Send the updated Laybrinth to all players
+            sendLabyrinthToAll()
+
+        # Check if someone has won
+        if currentGameLabyrinth.won:
+            client.send("won".encode())
+            sendDefeatToLosers(robot)
+            break
+
+    # Close all connections
+    print("Closing all connections...")
+    closeConnections(clientsConnected)
+    mainConnection.close()
 
 
 if __name__ == "__main__":

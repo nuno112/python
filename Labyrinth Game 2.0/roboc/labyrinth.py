@@ -23,6 +23,18 @@ class Labyrinth:
             text += "\n"
         return text.strip()
 
+    def getLabyrinthSize(self):
+        """This method gets the max coordinates of the labyrinth"""
+        maxX = 0
+        maxY = 0
+        for coords in self.grid:
+            x, y = coords
+            if x > maxX:
+                maxX = x
+            if y > maxY:
+                maxY = y
+        return (maxX, maxY)
+
     def getEmptySpaces(self):
         """This method returns the currently empty spaces in a labyritnh
         as a list containing tuples in the form (x, y)"""
@@ -47,7 +59,7 @@ class Labyrinth:
 
         oldPosition = robot.position
 
-        occupiedSpaces = (".", "O", "U", "X")
+        occupiedSpaces = (".", "O", "U", "x")
         if (self.grid[newPosition] not in occupiedSpaces
            and not robot.robotInDoor):
             robot.updateRobotPosition(newPosition, False)

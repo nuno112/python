@@ -61,7 +61,7 @@ def chooseMap():
         choice = input("Please choose the game map by entering" +
                        " the corresponding number: ")
         try:
-            choiceInt = int(choice)
+            choiceInt = int(choice) - 1
         except ValueError:
             print("Not a valid choice.")
 
@@ -143,10 +143,9 @@ def handleClientCommand(robot, command):
     and updates the labyrinth accordingly. The command validation is made in
     the client side"""
 
-    # TODO add the wall door and build door functionality
-
     global currentGameLabyrinth
     x, y = robot.position
+    maxX, maxY = currentGameLabyrinth.getLabyrinthSize()
 
     if command == "s":
         x += 1
@@ -156,7 +155,53 @@ def handleClientCommand(robot, command):
         y += 1
     elif command == "w":
         y -= 1
+    elif command[0] == "p":
+        # Create a door in a wall
+        direction = command[1]
+        a, b = robot.position
+        if direction == "s":
+            a += 1
+        elif direction == "n":
+            a -= 1
+        elif direction == "e":
+            b += 1
+        elif direction == "w":
+            b -= 1
 
+        # Check if the position to change is not a map border
+        if a > 0 and a < maxX and b < maxY and b > 0:
+            # Check if there's a wall to door in the place the user wanted
+            if currentGameLabyrinth.grid[(a, b)] == "O":
+                currentGameLabyrinth.grid[(a, b)] = "."
+                return True
+            else:
+                return False
+        else:
+            return False
+    elif command[0] == "m":
+        # Create a wall in a door
+        direction = command[1]
+        a, b = robot.position
+        if direction == "s":
+            a += 1
+        elif direction == "n":
+            a -= 1
+        elif direction == "e":
+            b += 1
+        elif direction == "w":
+            b -= 1
+
+        # Check if the position to change is not a map border
+        if a > 0 and a < maxX and b < maxY and b > 0:
+
+            # Check if there's a door to wall in the place the user wanted
+            if currentGameLabyrinth.grid[(a, b)] == ".":
+                currentGameLabyrinth.grid[(a, b)] = "O"
+                return True
+            else:
+                return False
+        else:
+            return False
     # Check if the movement is valid and return True or False
     valid = currentGameLabyrinth.checkRobotMovement(robot, (x, y))
     return valid

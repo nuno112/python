@@ -1,7 +1,6 @@
 # -*-coding:Utf-8 -*
 
 import unittest
-import mock
 import sys
 sys.path.insert(0, "/home/pce/workspace/python/Labyrinth Game 2.0/roboc/")
 
@@ -9,8 +8,6 @@ from labyrinth import *
 from robot import *
 from obstacle import *
 from helpers import *
-from client import *
-from server import *
 
 
 class LabyrinthTest(unittest.TestCase):

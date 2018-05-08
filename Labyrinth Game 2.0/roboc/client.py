@@ -14,7 +14,7 @@ from threading import *
 os.system("clear")
 
 host = "localhost"
-port = 15002
+port = 15008
 playing = False
 remainingMove = []
 command = ""

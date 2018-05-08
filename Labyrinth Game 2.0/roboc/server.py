@@ -22,7 +22,7 @@ from robot import *
 os.system("clear")
 
 host = ""
-port = 15002
+port = 15008
 
 maps = []
 currentGameLabyrinth = {}
@@ -94,9 +94,9 @@ def acceptConnections(clientsConnected, connection):
 
     # Listen on the main connection for clients, and add them to the
     # pending connection list to be accepted
-    requestedConections, wlist, xlist = select.select([connection], [],
-                                                      [], 0.05)
-    for connection in requestedConections:
+    requestedConnections, wlist, xlist = select.select([connection], [],
+                                                       [], 0.05)
+    for connection in requestedConnections:
         connectionWithClient, connectionInfo = connection.accept()
         print("{} joined.".format(connectionInfo))
 
@@ -105,10 +105,11 @@ def acceptConnections(clientsConnected, connection):
 
         # Create the robot that corresponds to this player
         player = Player(connectionWithClient)
-        robot = Robot(currentGameLabyrinth.getEmptySpaces(), player)
+        if currentGameLabyrinth:
+            robot = Robot(currentGameLabyrinth.getEmptySpaces(), player)
 
-        # Add the robot to the currentGameLabyrinth
-        currentGameLabyrinth.addRobot(robot)
+            # Add the robot to the currentGameLabyrinth
+            currentGameLabyrinth.addRobot(robot)
 
     # Listen to the connected clients. The clients returned by select are
     # the ones to be read (recv). Wait for 50 ms. Lock te call to
